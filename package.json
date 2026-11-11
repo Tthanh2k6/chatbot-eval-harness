@@ -1,0 +1,22 @@
+{
+  "name": "chatbot-eval-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end QA and evaluation harness for a documentation RAG chatbot using node:test, promptfoo, and Playwright",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "eval": "node scripts/run-eval.js",
+    "e2e": "npx playwright test"
+  },
+  "author": "Trung Thanh Tran",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "promptfoo": "0.125.1"
+  }
+}

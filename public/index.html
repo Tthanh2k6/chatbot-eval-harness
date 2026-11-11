@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quillnote Support Chat</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+    }
+    main {
+      width: 100%;
+      max-width: 720px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+    .subtitle {
+      margin-top: -0.5rem;
+      margin-bottom: 1.25rem;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+    #messages {
+      min-height: 260px;
+      max-height: 460px;
+      overflow-y: auto;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .message {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+    .user-message {
+      background: #e0f2fe;
+      align-self: flex-end;
+      max-width: 85%;
+    }
+    .assistant-message {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      align-self: flex-start;
+      max-width: 90%;
+    }
+    .role-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #334155;
+      margin-bottom: 0.25rem;
+    }
+    .message-text {
+      margin: 0;
+      word-break: break-word;
+    }
+    .citations {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .citation-link {
+      color: #0284c7;
+      text-decoration: underline;
+      font-weight: 500;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.65rem 0.85rem;
+      font-size: 1rem;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+    }
+    button[type="submit"] {
+      padding: 0.65rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: #0284c7;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button[type="submit"]:hover {
+      background: #0369a1;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Quillnote Documentation Assistant</h1>
+    <p class="subtitle">Ask questions about Quillnote plans, sync, shortcuts, exports, security, and policies.</p>
+
+    <div id="messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
+
+    <form id="chat-form" novalidate>
+      <label for="question-input">Ask a question about Quillnote</label>
+      <div class="input-row">
+        <input
+          id="question-input"
+          name="question"
+          type="text"
+          autocomplete="off"
+          placeholder="e.g., How much does the Plus plan cost?"
+        />
+        <button id="send-button" type="submit">Send</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('question-input');
+    const messages = document.getElementById('messages');
+
+    function appendMessage(role, text, citations = [], refused = false) {
+      const wrapper = document.createElement('div');
+      wrapper.className = `message ${role.toLowerCase()}-message`;
+      wrapper.setAttribute('data-role', role.toLowerCase());
+      wrapper.setAttribute('data-refused', String(Boolean(refused)));
+
+      const roleSpan = document.createElement('span');
+      roleSpan.className = 'role-label';
+      roleSpan.textContent = role;
+      wrapper.appendChild(roleSpan);
+
+      const textP = document.createElement('p');
+      textP.className = 'message-text';
+
+      let cleanText = text;
+      if (Array.isArray(citations) && citations.length > 0) {
+        for (const docId of citations) {
+          cleanText = cleanText.replace(`[${docId}]`, '').trim();
+        }
+      }
+      textP.textContent = cleanText;
+      wrapper.appendChild(textP);
+
+      if (Array.isArray(citations) && citations.length > 0) {
+        const citationsDiv = document.createElement('div');
+        citationsDiv.className = 'citations';
+        for (const docId of citations) {
+          const normalized = docId.startsWith('/') ? docId : `/${docId}`;
+          const link = document.createElement('a');
+          link.className = 'citation-link';
+          link.href = normalized;
+          link.textContent = docId;
+          citationsDiv.appendChild(link);
+        }
+        wrapper.appendChild(citationsDiv);
+      }
+
+      messages.appendChild(wrapper);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (!question) {
+        return;
+      }
+
+      input.value = '';
+      appendMessage('User', question);
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          appendMessage('Assistant', data.error || 'Error processing request.', [], true);
+          return;
+        }
+        appendMessage('Assistant', data.answer, data.citations || [], data.refused);
+      } catch {
+        appendMessage('Assistant', 'Network error while contacting server.', [], true);
+      }
+    });
+  </script>
+</body>
+</html>

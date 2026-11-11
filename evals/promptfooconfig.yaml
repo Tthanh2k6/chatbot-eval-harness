@@ -1,0 +1,17 @@
+description: "Quillnote chatbot deterministic evaluation suite (CI gate, no API keys required)"
+
+prompts:
+  - "{{question}}"
+
+providers:
+  - id: http://localhost:3917/api/chat
+    config:
+      url: http://localhost:3917/api/chat
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        question: "{{prompt}}"
+      transformResponse: "json.answer + (json.citations && json.citations.length && !json.answer.includes(json.citations[0]) ? ' [' + json.citations.join(', ') + ']' : '')"
+
+tests: file://tests.yaml
