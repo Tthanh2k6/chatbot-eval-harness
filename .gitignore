@@ -3,3 +3,6 @@ results.json
 playwright-report
 test-results
 .env
+
+# Internal notes, kept local
+SPEC.md
